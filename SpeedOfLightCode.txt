@@ -1,0 +1,101 @@
+import numpy as np
+import statistics
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+
+length = [2.09, 3.02, 3.92, 4.96, 5.62, 6.61, 7.55, 8.65, 10.04, 11.25, 12.77, 14.07, 15.81, 17.45]
+time = [82, 83, 86, 89, 91, 94, 96, 101, 106, 111, 115, 120, 126, 131]
+
+plt.plot(time, length)
+plt.xlabel('Time (ns)')
+plt.ylabel('Length (m)')
+plt.savefig("length_as_a_function_of_time")
+plt.show()
+plt.close()
+
+c = []
+for i in range(len(length)):
+    c = np.append(c, length[i]/(time[i] * (10 ** (-9))))
+cinv = []
+for i in range(len(c)):
+    cinv = np.append(cinv, 1/c[i])
+def l(t, a, b):
+    l = t * a + b
+    return l
+popt, pcov = curve_fit(l, time, length)
+a = popt[0]
+b = popt[1]
+perr = np.sqrt(np.diag(pcov))
+aerr = perr[0]
+berr = perr[1]
+xvalues = np.linspace(80, 140, 100)
+plt.plot(xvalues, l(xvalues, a, b), label = 'Fit')
+plt.plot(time, length, color = 'black', label = 'Data')
+plt.xlabel('Time (ns)')
+plt.ylabel('Length (m)')
+plt.legend()
+plt.savefig('length_as_a_function_of_time_with_fits')
+plt.show()
+plt.close()
+print('The measured speed is (', a, ' +- ', aerr, ')x10^-9')
+print('The length correction is ', b, ' +- ', berr)
+
+def vinv(l, tdel, invc):
+    v = tdel/l + invc
+    return v
+popt, pcov = curve_fit(vinv, length, cinv)
+tdel = popt[0]
+invc = popt[1]
+perr = np.sqrt(np.diag(pcov))
+tdelerr = perr[0]
+invcerr = perr[1]
+print(tdel)
+print(tdelerr)
+print(invc)
+print(invcerr)
+
+creal = []
+tlight = []
+for i in range(len(c)):
+    tlight = np.append(tlight, (time[i] * 10 ** (-9) - tdel))
+    creal = np.append(creal, length[i]/tlight[i])
+print(creal)
+
+trials = []
+for i in range(len(creal)):
+    trials = np.append(trials, i + 1)
+plt.plot(trials, c, label = 'Unadjusted C Values')
+plt.plot(trials, creal, color = 'black', label = 'Adjusted C Values')
+plt.legend()
+plt.xlabel("Trial Number")
+plt.ylabel("Measured C")
+plt.show()
+plt.close()
+
+ltimeerr = []
+for i in range(len(creal)):
+    ltimeerr = np.append(ltimeerr, np.sqrt((((1 * 10 ** (-9))) ** 2) + (((tdelerr)) ** 2)))
+
+lerrtot = []
+for i in range(len(creal)):
+    lerrtot = np.append(lerrtot, np.sqrt((((1/(tlight[i])) * (0.01)) ** 2) + (((length[i])/((tlight[i]) ** 2)) * ltimeerr[i]) ** 2))
+print(lerrtot)
+
+sdlight = statistics.stdev(creal)
+meanlight = statistics.mean(creal)
+errmean = statistics.stdev(lerrtot)
+print(meanlight, " +- (",sdlight, " + ", errmean,")")
+
+speed = []
+for i in range(len(time)):
+    speed = np.append(speed, 299792458)
+
+plt.plot(length, c, label = 'Measured C')
+plt.plot(length, creal, color = 'red',  label = 'Adjusted C')
+plt.plot(length, speed, color = 'black', label = 'Actual value of C')
+plt.legend()
+plt.xlabel("Length")
+plt.ylabel("Speed of Light")
+plt.savefig("measured_adjusted_and_actual_speeds_of_light")
+plt.show()
+plt.close()
